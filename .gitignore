@@ -102,3 +102,12 @@ dist
 
 # TernJS port file
 .tern-port
+
+# Compound extra code
+_compound
+
+# hardhat 
+artifacts
+cache
+deployments/hardhat
+deployments/localhost
