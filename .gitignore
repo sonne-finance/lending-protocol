@@ -111,3 +111,5 @@ artifacts
 cache
 deployments/hardhat
 deployments/localhost
+
+typechain-types
