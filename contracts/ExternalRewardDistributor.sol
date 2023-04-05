@@ -17,12 +17,12 @@ struct CompMarketState {
 struct RewardMarketState {
     /// @notice The supply speed for each market
     uint256 supplySpeed;
-    /// @notice The borrow speed for each market
-    uint256 borrowSpeed;
     /// @notice The supply index for each market
     uint224 supplyIndex;
     /// @notice The last block number that Reward accrued for supply
     uint32 supplyBlock;
+    /// @notice The borrow speed for each market
+    uint256 borrowSpeed;
     /// @notice The borrow index for each market
     uint224 borrowIndex;
     /// @notice The last block number that Reward accrued for borrow
@@ -39,6 +39,24 @@ struct RewardAccountState {
 }
 
 contract ExternalRewardDistributorV1 is Ownable, ExponentialNoError {
+    event RewardDistributed(
+        address indexed rewardToken,
+        address indexed user,
+        uint256 amount
+    );
+
+    event RewardSupplySpeedUpdated(
+        address indexed rewardToken,
+        address indexed cToken,
+        uint256 supplySpeed
+    );
+
+    event RewardBorrowSpeedUpdated(
+        address indexed rewardToken,
+        address indexed cToken,
+        uint256 borrowSpeed
+    );
+
     /// @notice The initial reward index for a market
     uint224 public constant rewardInitialIndex = 1e36;
 
@@ -71,7 +89,7 @@ contract ExternalRewardDistributorV1 is Ownable, ExponentialNoError {
     function _initializeReward(
         address rewardToken_,
         uint32 startBlockNumber,
-        address[] memory markets,
+        address[] memory cTokens,
         uint256[] memory supplySpeeds,
         uint256[] memory borrowSpeeds
     ) public onlyOwner {
@@ -84,33 +102,39 @@ contract ExternalRewardDistributorV1 is Ownable, ExponentialNoError {
             "RewardDistributor: reward token already exists"
         );
         require(
-            markets.length == supplySpeeds.length,
+            cTokens.length == supplySpeeds.length,
             "RewardDistributor: supply speed array length mismatch"
         );
         require(
-            markets.length == borrowSpeeds.length,
+            cTokens.length == borrowSpeeds.length,
             "RewardDistributor: borrow speed array length mismatch"
         );
 
-        for (uint256 i = 0; i < markets.length; i++) {
-            address cToken = markets[i];
+        for (uint256 i = 0; i < cTokens.length; i++) {
+            address cToken = cTokens[i];
             RewardMarketState storage marketState = rewardMarketState[
                 rewardToken_
             ][cToken];
-            marketState.supplySpeed = supplySpeeds[i];
-            marketState.borrowSpeed = borrowSpeeds[i];
             marketState.supplyIndex = rewardInitialIndex;
             marketState.supplyBlock = startBlockNumber;
             marketState.borrowIndex = rewardInitialIndex;
             marketState.borrowBlock = startBlockNumber;
+
+            updateRewardSpeedInternal(
+                rewardToken_,
+                cToken,
+                supplySpeeds[i],
+                borrowSpeeds[i]
+            );
         }
 
         rewardTokens.push(rewardToken_);
+        rewardTokenExists[rewardToken_] = true;
     }
 
     function _updateRewardSpeeds(
         address rewardToken_,
-        address[] memory markets,
+        address[] memory cTokens,
         uint256[] memory supplySpeeds,
         uint256[] memory borrowSpeeds
     ) public onlyOwner {
@@ -123,25 +147,48 @@ contract ExternalRewardDistributorV1 is Ownable, ExponentialNoError {
             "RewardDistributor: reward token does not exist"
         );
         require(
-            markets.length == supplySpeeds.length,
+            cTokens.length == supplySpeeds.length,
             "RewardDistributor: supply speed array length mismatch"
         );
         require(
-            markets.length == borrowSpeeds.length,
+            cTokens.length == borrowSpeeds.length,
             "RewardDistributor: borrow speed array length mismatch"
         );
 
-        for (uint256 i = 0; i < markets.length; i++) {
-            address cToken = markets[i];
-            RewardMarketState storage marketState = rewardMarketState[
-                rewardToken_
-            ][cToken];
-            marketState.supplySpeed = supplySpeeds[i];
-            marketState.borrowSpeed = borrowSpeeds[i];
+        for (uint256 i = 0; i < cTokens.length; i++) {
+            updateRewardSpeedInternal(
+                rewardToken_,
+                cTokens[i],
+                supplySpeeds[i],
+                borrowSpeeds[i]
+            );
         }
     }
 
-    function notifySupplyIndex(CToken cToken) external onlyComptroller {
+    function updateRewardSpeedInternal(
+        address rewardToken,
+        address cToken,
+        uint256 supplySpeed,
+        uint256 borrowSpeed
+    ) internal {
+        RewardMarketState storage marketState = rewardMarketState[rewardToken][
+            cToken
+        ];
+
+        if (marketState.supplySpeed != supplySpeed) {
+            notifySupplyIndexInternal(rewardToken, cToken);
+            marketState.supplySpeed = supplySpeed;
+            emit RewardSupplySpeedUpdated(rewardToken, cToken, supplySpeed);
+        }
+
+        if (marketState.borrowSpeed != borrowSpeed) {
+            notifyBorrowIndexInternal(rewardToken, cToken);
+            marketState.borrowSpeed = borrowSpeed;
+            emit RewardBorrowSpeedUpdated(rewardToken, cToken, borrowSpeed);
+        }
+    }
+
+    function notifySupplyIndex(address cToken) external onlyComptroller {
         for (uint256 i = 0; i < rewardTokens.length; i++) {
             notifySupplyIndexInternal(rewardTokens[i], cToken);
         }
@@ -149,10 +196,10 @@ contract ExternalRewardDistributorV1 is Ownable, ExponentialNoError {
 
     function notifySupplyIndexInternal(
         address rewardToken,
-        CToken cToken
+        address cToken
     ) internal {
         RewardMarketState storage marketState = rewardMarketState[rewardToken][
-            address(cToken)
+            cToken
         ];
 
         uint32 blockNumber = getBlockNumber();
@@ -177,24 +224,20 @@ contract ExternalRewardDistributorV1 is Ownable, ExponentialNoError {
         }
     }
 
-    function notifyBorrowIndex(
-        address cToken,
-        Exp memory marketBorrowIndex
-    ) external onlyComptroller {
+    function notifyBorrowIndex(address cToken) external onlyComptroller {
         for (uint256 i = 0; i < rewardTokens.length; i++) {
-            notifyBorrowIndexInternal(
-                rewardTokens[i],
-                cToken,
-                marketBorrowIndex
-            );
+            notifyBorrowIndexInternal(rewardTokens[i], cToken);
         }
     }
 
     function notifyBorrowIndexInternal(
         address rewardToken,
-        address cToken,
-        Exp memory marketBorrowIndex
+        address cToken
     ) internal {
+        Exp memory marketBorrowIndex = Exp({
+            mantissa: CToken(cToken).borrowIndex()
+        });
+
         RewardMarketState storage marketState = rewardMarketState[rewardToken][
             cToken
         ];
@@ -273,25 +316,22 @@ contract ExternalRewardDistributorV1 is Ownable, ExponentialNoError {
 
     function notifyBorrower(
         address cToken,
-        address borrower,
-        Exp memory marketBorrowIndex
+        address borrower
     ) external onlyComptroller {
         for (uint256 i = 0; i < rewardTokens.length; i++) {
-            notifyBorrowerInternal(
-                rewardTokens[i],
-                cToken,
-                borrower,
-                marketBorrowIndex
-            );
+            notifyBorrowerInternal(rewardTokens[i], cToken, borrower);
         }
     }
 
     function notifyBorrowerInternal(
         address rewardToken,
         address cToken,
-        address borrower,
-        Exp memory marketBorrowIndex
+        address borrower
     ) internal {
+        Exp memory marketBorrowIndex = Exp({
+            mantissa: CToken(cToken).borrowIndex()
+        });
+
         RewardMarketState storage marketState = rewardMarketState[rewardToken][
             cToken
         ];

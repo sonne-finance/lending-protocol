@@ -1588,11 +1588,7 @@ contract Comptroller is
         }
 
         (bool success, ) = getExternalRewardDistributorAddress().call(
-            abi.encodeWithSignature(
-                "notifyBorrowIndex(address,tuple(uint256))",
-                cToken,
-                marketBorrowIndex
-            )
+            abi.encodeWithSignature("notifyBorrowIndex(address)", cToken)
         );
     }
 
@@ -1703,10 +1699,9 @@ contract Comptroller is
 
         (bool success, ) = getExternalRewardDistributorAddress().call(
             abi.encodeWithSignature(
-                "notifyBorrower(address,address,tuple(uint256))",
+                "notifyBorrower(address,address)",
                 cToken,
-                borrower,
-                marketBorrowIndex
+                borrower
             )
         );
     }
