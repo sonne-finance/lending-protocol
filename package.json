@@ -6,6 +6,7 @@
     "scripts": {
         "build": "npx hardhat compile",
         "test": "npx hardhat test",
+        "coverage": "npx hardhat coverage",
         "deploy:ganache": "npx hardhat deploy --network ganache",
         "deploy:optimism": "npx hardhat deploy --network optimism",
         "deploy:fantom": "npx hardhat deploy --network fantom"

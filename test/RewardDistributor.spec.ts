@@ -10,6 +10,8 @@ const opAddress = "0x4200000000000000000000000000000000000042";
 const lenderAddress = "0x418c0fc22d28f232fddaee148b38e5df38674abf";
 const opWhaleAddress = "0xa28390A0eb676c1C40dAa794ECc2336740701BD1";
 
+const MANTISSA = ethers.constants.WeiPerEther;
+
 describe("RewardDistributor", () => {
     let comptroller: Contract;
     let cTokens: { [key: string]: Contract };
@@ -30,11 +32,12 @@ describe("RewardDistributor", () => {
         cTokens = setup.cTokens;
 
         const currentBlock = await comptroller.getBlockNumber();
-        rewardStart = currentBlock.add(1000);
+        rewardStart = currentBlock;
 
-        await rewardDistributor._initializeReward(
+        await rewardDistributor._whitelistToken(opAddress);
+
+        await rewardDistributor._updateRewardSpeeds(
             opAddress,
-            rewardStart,
             [
                 "0x5569b83de187375d43FBd747598bfe64fC8f6436",
                 "0x5Ff29E4470799b982408130EFAaBdeeAE7f66a10",
@@ -99,6 +102,151 @@ describe("RewardDistributor", () => {
         expect(rewardDistributor.address).to.be.properAddress;
     });
 
+    describe("Admin", () => {
+        it("Should whitelist a token", async () => {
+            await expect(rewardDistributor._whitelistToken(sonneAddress)).to.not
+                .reverted;
+        });
+
+        it("Should revert non admin whitelist", async () => {
+            const [deployer, user] = await ethers.getSigners();
+            await expect(
+                rewardDistributor.connect(user)._whitelistToken(sonneAddress),
+            ).to.revertedWith("Ownable: caller is not the owner");
+        });
+
+        it("Should revert whitelist zero address", async () => {
+            await expect(
+                rewardDistributor._whitelistToken(ethers.constants.AddressZero),
+            ).to.revertedWith(
+                "RewardDistributor: reward token cannot be zero address",
+            );
+        });
+
+        it("Should revert whitelist a token twice", async () => {
+            await expect(rewardDistributor._whitelistToken(sonneAddress)).to.not
+                .reverted;
+
+            await expect(
+                rewardDistributor._whitelistToken(sonneAddress),
+            ).to.revertedWith("RewardDistributor: reward token already exists");
+        });
+
+        it("Should update reward speeds", async () => {
+            const supplyReward1 = "15860055827886700";
+            const supplyReward2 = "12976409313725500";
+            const borrowReward1 = "111026007625272000";
+            const borrowReward2 = "2883646514161220";
+
+            await expect(
+                rewardDistributor._updateRewardSpeeds(
+                    opAddress,
+                    [
+                        "0x5569b83de187375d43FBd747598bfe64fC8f6436",
+                        "0x5Ff29E4470799b982408130EFAaBdeeAE7f66a10",
+                    ],
+                    [supplyReward1, supplyReward2],
+                    [borrowReward1, borrowReward2],
+                ),
+            ).to.not.reverted;
+
+            const marketState = await rewardDistributor.rewardMarketState(
+                opAddress,
+                "0x5569b83de187375d43FBd747598bfe64fC8f6436",
+            );
+            expect(marketState.supplySpeed).to.be.equal(supplyReward1);
+            expect(marketState.borrowSpeed).to.be.equal(borrowReward1);
+        });
+
+        it("Should revert non admin update reward speeds", async () => {
+            const [deployer, user] = await ethers.getSigners();
+            await expect(
+                rewardDistributor
+                    .connect(user)
+                    ._updateRewardSpeeds(
+                        opAddress,
+                        [
+                            "0x5569b83de187375d43FBd747598bfe64fC8f6436",
+                            "0x5Ff29E4470799b982408130EFAaBdeeAE7f66a10",
+                        ],
+                        ["15860055827886700", "12976409313725500"],
+                        ["111026007625272000", "2883646514161220"],
+                    ),
+            ).to.revertedWith("Ownable: caller is not the owner");
+        });
+
+        it("Should revert update reward speeds incorrect input", async () => {
+            await expect(
+                rewardDistributor._updateRewardSpeeds(
+                    opAddress,
+                    [
+                        "0x5569b83de187375d43FBd747598bfe64fC8f6436",
+                        "0x5Ff29E4470799b982408130EFAaBdeeAE7f66a10",
+                    ],
+                    ["15860055827886700", "12976409313725500"],
+                    ["111026007625272000"],
+                ),
+            ).to.revertedWith(
+                "RewardDistributor: borrow speed array length mismatch",
+            );
+
+            await expect(
+                rewardDistributor._updateRewardSpeeds(
+                    opAddress,
+                    ["0x5569b83de187375d43FBd747598bfe64fC8f6436"],
+                    ["15860055827886700", "12976409313725500"],
+                    ["111026007625272000"],
+                ),
+            ).to.revertedWith(
+                "RewardDistributor: supply speed array length mismatch",
+            );
+
+            await expect(
+                rewardDistributor._updateRewardSpeeds(
+                    sonneAddress,
+                    [
+                        "0x5569b83de187375d43FBd747598bfe64fC8f6436",
+                        "0x5Ff29E4470799b982408130EFAaBdeeAE7f66a10",
+                    ],
+                    ["15860055827886700", "12976409313725500"],
+                    ["111026007625272000", "2883646514161220"],
+                ),
+            ).to.revertedWith("RewardDistributor: reward token does not exist");
+        });
+
+        it("Should grant reward to user ", async () => {
+            const [deployer, user] = await ethers.getSigners();
+            await expect(
+                rewardDistributor
+                    .connect(deployer)
+                    ._grantReward(opAddress, deployer.address, 1000),
+            ).to.not.reverted;
+
+            await expect(
+                rewardDistributor
+                    .connect(user)
+                    ._grantReward(opAddress, user.address, 1000),
+            ).to.revertedWith("Ownable: caller is not the owner");
+
+            await expect(
+                rewardDistributor
+                    .connect(deployer)
+                    ._grantReward(lenderAddress, deployer.address, 1000),
+            ).to.revertedWith(
+                "RewardDistributor: grant reward token does not exist",
+            );
+        });
+
+        it("Should revert non admin grant reward", async () => {
+            const [deployer, user] = await ethers.getSigners();
+            await expect(
+                rewardDistributor
+                    .connect(user)
+                    ._grantReward(opAddress, deployer.address, 1000),
+            ).to.revertedWith("Ownable: caller is not the owner");
+        });
+    });
+
     it("Should have a comptroller", async () => {
         const comptrollerSetted = await rewardDistributor.comptroller();
         expect(comptrollerSetted).to.be.properAddress;
@@ -110,49 +258,31 @@ describe("RewardDistributor", () => {
             lenderAddress,
         ]);
         const user = await ethers.getSigner(lenderAddress);
-
-        const positions = await getWalletPositions(comptroller, lenderAddress);
-        const marketStates = await Promise.all(
-            positions.map(position =>
-                rewardDistributor.rewardMarketState(
-                    opAddress,
-                    position.cToken.address,
-                ),
-            ),
-        );
-        const supplySpeeds = marketStates.map(state => state.supplySpeed);
-        const borrowSpeeds = marketStates.map(state => state.borrowSpeed);
-        const marketRewardPerSecond = positions.map((position, i) => {
-            const supplyReward = position.supplyBalance
-                .mul(supplySpeeds[i])
-                .div(ethers.utils.parseEther("1"));
-            const borrowReward = position.borrowBalance
-                .mul(borrowSpeeds[i])
-                .div(ethers.utils.parseEther("1"));
-            return supplyReward.add(borrowReward);
-        });
-        const rewardPerSecond = marketRewardPerSecond.reduce(
-            (acc, reward) => acc.add(reward),
-            BigNumber.from(0),
-        );
+        const userMarkets = await comptroller.getAssetsIn(user.address);
 
         // reset sonne reward by claiming
-        await ethers.provider.send("evm_setNextBlockTimestamp", [
-            rewardStart.toNumber(),
-        ]);
         await comptroller
             .connect(user)
             .functions["claimComp(address,address[])"](
                 lenderAddress,
-                positions.map(position => position.cToken.address),
+                userMarkets,
             );
         //
 
-        const diffSeconds = 24 * 60 * 60; // 1 day
+        const networkNow = (await ethers.provider.getBlock("latest")).timestamp;
+        const halfPeriod = 12 * 60 * 60; // 12 hours
+        const fullPeriod = 24 * 60 * 60; // 24 hours
         // set block time to reward start
         await ethers.provider.send("evm_setNextBlockTimestamp", [
-            rewardStart.toNumber() + diffSeconds / 2,
+            networkNow + halfPeriod,
         ]);
+
+        const firstRewards = await calculateRewards(
+            networkNow,
+            networkNow + halfPeriod,
+            comptroller,
+            rewardDistributor,
+        );
 
         await rewardDistributor._updateRewardSpeeds(
             opAddress,
@@ -163,13 +293,14 @@ describe("RewardDistributor", () => {
 
         // set block time to reward start
         await ethers.provider.send("evm_setNextBlockTimestamp", [
-            rewardStart.toNumber() + diffSeconds,
+            networkNow + fullPeriod,
         ]);
 
-        const expectedReward = rewardPerSecond.mul(diffSeconds);
-        console.log(
-            "Expected reward",
-            ethers.utils.formatEther(expectedReward),
+        const secondRewards = await calculateRewards(
+            networkNow + halfPeriod,
+            networkNow + fullPeriod,
+            comptroller,
+            rewardDistributor,
         );
 
         const diffBalances = await watchBalances(
@@ -178,45 +309,101 @@ describe("RewardDistributor", () => {
                     .connect(user)
                     .functions["claimComp(address,address[])"](
                         lenderAddress,
-                        ["0xEC8FEa79026FfEd168cCf5C627c7f486D77b765F"],
-                        //positions.map(position => position.cToken.address),
+                        userMarkets,
                     );
             },
             [sonneAddress, opAddress],
             lenderAddress,
         );
 
-        console.log(
-            diffBalances.map(balance => ethers.utils.formatEther(balance)),
+        const expectedOpReward = firstRewards.add(secondRewards);
+        const diffSonne = diffBalances[0];
+        const diffOp = diffBalances[1];
+
+        expect(diffOp).to.closeTo(
+            expectedOpReward,
+            ethers.utils.parseUnits("1", 9),
         );
     });
 });
+
+const calculateRewards = async (start, end, comptroller, rewardDistributor) => {
+    const positions = await getWalletPositions(comptroller, lenderAddress);
+    const marketStates = await Promise.all(
+        positions.map((position) =>
+            rewardDistributor.rewardMarketState(
+                opAddress,
+                position.cToken.address,
+            ),
+        ),
+    );
+    const supplySpeeds = marketStates.map((state) => state.supplySpeed);
+    const supplyBlocks = marketStates.map((state) => state.supplyBlock);
+    const borrowSpeeds = marketStates.map((state) => state.borrowSpeed);
+    const borrowBlocks = marketStates.map((state) => state.borrowBlock);
+
+    const marketRewards = positions.map((position, i) => {
+        const supplyReward = position.supplyRatio
+            .mul(supplySpeeds[i])
+            .div(MANTISSA)
+            .mul(end - start);
+        const borrowReward = position.borrowRatio
+            .mul(borrowSpeeds[i])
+            .div(MANTISSA)
+            .mul(end - start);
+        return supplyReward.add(borrowReward);
+    });
+
+    const totalReward = marketRewards.reduce(
+        (acc, reward) => acc.add(reward),
+        ethers.BigNumber.from(0),
+    );
+
+    return totalReward;
+};
 
 const getWalletPositions = async (
     comptroller: Contract,
     userAddress: string,
 ) => {
-    const markets = await comptroller.getAssetsIn(userAddress);
+    const userMarkets = await comptroller.getAssetsIn(userAddress);
     const cTokens = await Promise.all(
-        markets.map(market => ethers.getContractAt("CToken", market)),
+        userMarkets.map((market: string) =>
+            ethers.getContractAt("CTokenInterface", market),
+        ),
     );
     const balances = await Promise.all(
-        cTokens.map(cToken => cToken.balanceOf(userAddress)),
+        cTokens.map((cToken) => cToken.balanceOf(userAddress)),
     );
-    const borrowBalances = await Promise.all(
-        cTokens.map(cToken => cToken.borrowBalanceStored(userAddress)),
+    let borrowBalances = await Promise.all(
+        cTokens.map((cToken) => cToken.borrowBalanceStored(userAddress)),
     );
     const borrowIndexs = await Promise.all(
-        cTokens.map(cToken => cToken.borrowIndex()),
+        cTokens.map((cToken) => cToken.borrowIndex()),
+    );
+    const totalSupplies = await Promise.all(
+        cTokens.map((cToken) => cToken.totalSupply()),
+    );
+    let totalBorrows = await Promise.all(
+        cTokens.map((cToken) => cToken.totalBorrows()),
     );
 
-    return markets.map((market, i) => ({
-        market,
-        cToken: cTokens[i],
+    borrowBalances = borrowBalances.map((balance, i) =>
+        balance.mul(MANTISSA).div(borrowIndexs[i]),
+    );
+    totalBorrows = totalBorrows.map((balance, i) =>
+        balance.mul(MANTISSA).div(borrowIndexs[i]),
+    );
+
+    return cTokens.map((cToken, i) => ({
+        address: cToken.address,
+        cToken: cToken,
         supplyBalance: balances[i],
-        borrowBalance: borrowBalances[i]
-            .mul(borrowIndexs[i])
-            .div(ethers.utils.parseEther("1")),
+        borrowBalance: borrowBalances[i],
+        supplyRatio: balances[i].mul(MANTISSA).div(totalSupplies[i]),
+        borrowRatio: borrowBalances[i].mul(MANTISSA).div(totalBorrows[i]),
+        totalSupply: totalSupplies[i],
+        totalBorrow: totalBorrows[i],
     }));
 };
 
@@ -226,11 +413,11 @@ const watchBalances = async (
     userAddress: string,
 ) => {
     const tokenContracts = await Promise.all(
-        tokens.map(token => ethers.getContractAt("EIP20Interface", token)),
+        tokens.map((token) => ethers.getContractAt("EIP20Interface", token)),
     );
     const getBalances = async () =>
         await Promise.all(
-            tokenContracts.map(contract => contract.balanceOf(userAddress)),
+            tokenContracts.map((contract) => contract.balanceOf(userAddress)),
         );
 
     const beforeBalances = await getBalances();

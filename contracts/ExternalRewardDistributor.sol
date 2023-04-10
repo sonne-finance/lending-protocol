@@ -3,16 +3,9 @@ pragma solidity ^0.8.10;
 
 import "./Ownership/Ownable.sol";
 
+import "./CTokenInterfaces.sol";
 import "./EIP20Interface.sol";
-import "./Comptroller.sol";
 import "./ExponentialNoError.sol";
-
-struct CompMarketState {
-    // The market's last updated compBorrowIndex or compSupplyIndex
-    uint224 index;
-    // The block number the index was last updated at
-    uint32 block;
-}
 
 struct RewardMarketState {
     /// @notice The supply speed for each market
@@ -30,28 +23,40 @@ struct RewardMarketState {
 }
 
 struct RewardAccountState {
-    /// @notice The supply index for each market as of the last time they accrued Reward
+    /// @notice The supply index for each market as of the last time the account accrued Reward
     mapping(address => uint256) supplierIndex;
-    /// @notice The borrow index for each market as of the last time they accrued Reward
+    /// @notice The borrow index for each market as of the last time the account accrued Reward
     mapping(address => uint256) borrowerIndex;
-    /// @notice Accrued but not yet transferred for each token
+    /// @notice Accrued Reward but not yet transferred
     uint256 rewardAccrued;
 }
 
+/**
+ * @title External Reward Distributor (version 1)
+ * @author Sonne Finance
+ * @notice This contract is used to distribute rewards to users for supplying and borrowing assets.
+ * Each supply and borrow changing action from comptroller will trigger index update for each reward token.
+ */
 contract ExternalRewardDistributorV1 is Ownable, ExponentialNoError {
+    event RewardAccrued(
+        address indexed rewardToken,
+        address indexed user,
+        uint256 amount
+    );
+
     event RewardDistributed(
         address indexed rewardToken,
         address indexed user,
         uint256 amount
     );
 
-    event RewardSupplySpeedUpdated(
+    event SupplySpeedUpdated(
         address indexed rewardToken,
         address indexed cToken,
         uint256 supplySpeed
     );
 
-    event RewardBorrowSpeedUpdated(
+    event BorrowSpeedUpdated(
         address indexed rewardToken,
         address indexed cToken,
         uint256 borrowSpeed
@@ -61,7 +66,7 @@ contract ExternalRewardDistributorV1 is Ownable, ExponentialNoError {
     uint224 public constant rewardInitialIndex = 1e36;
 
     /// @notice The comptroller that rewards are distributed to
-    Comptroller public comptroller;
+    address public comptroller;
 
     /// @notice The Reward state for each reward token for each market
     mapping(address => mapping(address => RewardMarketState))
@@ -71,28 +76,24 @@ contract ExternalRewardDistributorV1 is Ownable, ExponentialNoError {
     mapping(address => mapping(address => RewardAccountState))
         public rewardAccountState;
 
+    /// @notice Added reward tokens
     address[] public rewardTokens;
+    /// @notice Flag to check if reward token added before
     mapping(address => bool) public rewardTokenExists;
 
     modifier onlyComptroller() {
         require(
-            msg.sender == address(comptroller),
+            msg.sender == comptroller,
             "RewardDistributor: only comptroller can call this function"
         );
         _;
     }
 
     constructor(address comptroller_) {
-        comptroller = Comptroller(comptroller_);
+        comptroller = comptroller_;
     }
 
-    function _initializeReward(
-        address rewardToken_,
-        uint32 startBlockNumber,
-        address[] memory cTokens,
-        uint256[] memory supplySpeeds,
-        uint256[] memory borrowSpeeds
-    ) public onlyOwner {
+    function _whitelistToken(address rewardToken_) public onlyOwner {
         require(
             rewardToken_ != address(0),
             "RewardDistributor: reward token cannot be zero address"
@@ -101,32 +102,6 @@ contract ExternalRewardDistributorV1 is Ownable, ExponentialNoError {
             !rewardTokenExists[rewardToken_],
             "RewardDistributor: reward token already exists"
         );
-        require(
-            cTokens.length == supplySpeeds.length,
-            "RewardDistributor: supply speed array length mismatch"
-        );
-        require(
-            cTokens.length == borrowSpeeds.length,
-            "RewardDistributor: borrow speed array length mismatch"
-        );
-
-        for (uint256 i = 0; i < cTokens.length; i++) {
-            address cToken = cTokens[i];
-            RewardMarketState storage marketState = rewardMarketState[
-                rewardToken_
-            ][cToken];
-            marketState.supplyIndex = rewardInitialIndex;
-            marketState.supplyBlock = startBlockNumber;
-            marketState.borrowIndex = rewardInitialIndex;
-            marketState.borrowBlock = startBlockNumber;
-
-            updateRewardSpeedInternal(
-                rewardToken_,
-                cToken,
-                supplySpeeds[i],
-                borrowSpeeds[i]
-            );
-        }
 
         rewardTokens.push(rewardToken_);
         rewardTokenExists[rewardToken_] = true;
@@ -138,10 +113,6 @@ contract ExternalRewardDistributorV1 is Ownable, ExponentialNoError {
         uint256[] memory supplySpeeds,
         uint256[] memory borrowSpeeds
     ) public onlyOwner {
-        require(
-            rewardToken_ != address(0),
-            "RewardDistributor: reward token cannot be zero address"
-        );
         require(
             rewardTokenExists[rewardToken_],
             "RewardDistributor: reward token does not exist"
@@ -176,15 +147,23 @@ contract ExternalRewardDistributorV1 is Ownable, ExponentialNoError {
         ];
 
         if (marketState.supplySpeed != supplySpeed) {
+            if (marketState.supplyIndex == 0) {
+                marketState.supplyIndex = rewardInitialIndex;
+            }
+
             notifySupplyIndexInternal(rewardToken, cToken);
             marketState.supplySpeed = supplySpeed;
-            emit RewardSupplySpeedUpdated(rewardToken, cToken, supplySpeed);
+            emit SupplySpeedUpdated(rewardToken, cToken, supplySpeed);
         }
 
         if (marketState.borrowSpeed != borrowSpeed) {
+            if (marketState.borrowIndex == 0) {
+                marketState.borrowIndex = rewardInitialIndex;
+            }
+
             notifyBorrowIndexInternal(rewardToken, cToken);
             marketState.borrowSpeed = borrowSpeed;
-            emit RewardBorrowSpeedUpdated(rewardToken, cToken, borrowSpeed);
+            emit BorrowSpeedUpdated(rewardToken, cToken, borrowSpeed);
         }
     }
 
@@ -205,10 +184,9 @@ contract ExternalRewardDistributorV1 is Ownable, ExponentialNoError {
         uint32 blockNumber = getBlockNumber();
 
         if (blockNumber > marketState.supplyBlock) {
-            uint256 deltaBlocks = blockNumber - marketState.supplyBlock;
-
             if (marketState.supplySpeed > 0) {
-                uint256 supplyTokens = CToken(cToken).totalSupply();
+                uint256 deltaBlocks = blockNumber - marketState.supplyBlock;
+                uint256 supplyTokens = CTokenInterface(cToken).totalSupply();
                 uint256 accrued = mul_(deltaBlocks, marketState.supplySpeed);
                 Double memory ratio = supplyTokens > 0
                     ? fraction(accrued, supplyTokens)
@@ -235,7 +213,7 @@ contract ExternalRewardDistributorV1 is Ownable, ExponentialNoError {
         address cToken
     ) internal {
         Exp memory marketBorrowIndex = Exp({
-            mantissa: CToken(cToken).borrowIndex()
+            mantissa: CTokenInterface(cToken).borrowIndex()
         });
 
         RewardMarketState storage marketState = rewardMarketState[rewardToken][
@@ -245,11 +223,10 @@ contract ExternalRewardDistributorV1 is Ownable, ExponentialNoError {
         uint32 blockNumber = getBlockNumber();
 
         if (blockNumber > marketState.borrowBlock) {
-            uint256 deltaBlocks = blockNumber - marketState.borrowBlock;
-
             if (marketState.borrowSpeed > 0) {
+                uint256 deltaBlocks = blockNumber - marketState.borrowBlock;
                 uint256 borrowAmount = div_(
-                    CToken(cToken).totalBorrows(),
+                    CTokenInterface(cToken).totalBorrows(),
                     marketBorrowIndex
                 );
                 uint256 accrued = mul_(deltaBlocks, marketState.borrowSpeed);
@@ -303,7 +280,7 @@ contract ExternalRewardDistributorV1 is Ownable, ExponentialNoError {
             mantissa: sub_(supplyIndex, supplierIndex)
         });
 
-        uint256 supplierTokens = CToken(cToken).balanceOf(supplier);
+        uint256 supplierTokens = CTokenInterface(cToken).balanceOf(supplier);
 
         // Calculate Reward accrued: cTokenAmount * accruedPerCToken
         uint256 supplierDelta = mul_(supplierTokens, deltaIndex);
@@ -329,7 +306,7 @@ contract ExternalRewardDistributorV1 is Ownable, ExponentialNoError {
         address borrower
     ) internal {
         Exp memory marketBorrowIndex = Exp({
-            mantissa: CToken(cToken).borrowIndex()
+            mantissa: CTokenInterface(cToken).borrowIndex()
         });
 
         RewardMarketState storage marketState = rewardMarketState[rewardToken][
@@ -358,11 +335,11 @@ contract ExternalRewardDistributorV1 is Ownable, ExponentialNoError {
         });
 
         uint256 borrowerAmount = div_(
-            CToken(cToken).borrowBalanceStored(borrower),
+            CTokenInterface(cToken).borrowBalanceStored(borrower),
             marketBorrowIndex
         );
 
-        // Calculate COMP accrued: cTokenAmount * accruedPerBorrowedUnit
+        // Calculate Reward accrued: cTokenAmount * accruedPerBorrowedUnit
         uint256 borrowerDelta = mul_(borrowerAmount, deltaIndex);
 
         accountState.rewardAccrued = add_(
@@ -394,8 +371,20 @@ contract ExternalRewardDistributorV1 is Ownable, ExponentialNoError {
         }
     }
 
-    function getBlockNumber() internal view returns (uint32) {
+    function getBlockNumber() public view returns (uint32) {
         return safe32(block.timestamp, "block number exceeds 32 bits");
+    }
+
+    function _grantReward(
+        address token,
+        address user,
+        uint256 amount
+    ) public onlyOwner {
+        require(
+            rewardTokenExists[token],
+            "RewardDistributor: grant reward token does not exist"
+        );
+        grantRewardInternal(token, user, amount);
     }
 
     /**
