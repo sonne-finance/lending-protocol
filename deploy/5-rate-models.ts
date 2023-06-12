@@ -1,59 +1,82 @@
-import { DeployFunction } from "hardhat-deploy/dist/types";
+
+import { BigNumber } from "ethers";
+import { DeployFunction } from "hardhat-deploy/types";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
+
+interface IModelDefinition {
+    blocksPerYear: number;
+    baseRatePerYear: BigNumber;
+    multiplerPerYear: BigNumber;
+    jumpMultiplierPerYear: BigNumber;
+    kink: BigNumber;
+    owner: string;
+    name: string;
+}
 
 const func: DeployFunction = async ({
-  getNamedAccounts,
-  deployments,
-  ethers,
-  network,
-}) => {
-  const { deploy } = deployments;
-  const { deployer } = await getNamedAccounts();
+    getNamedAccounts,
+    deployments: { deploy, getOrNull },
+    ethers,
+    network,
+}: HardhatRuntimeEnvironment) => {
+    const { deployer } = await getNamedAccounts();
 
-  const stableRateModel = await deploy("StableRateModel", {
-    from: deployer,
-    log: true,
-    contract: "contracts/JumpRateModelV4.sol:JumpRateModelV4",
-    args: [
-      365 * 24 * 60 * 60, // seconds per year
-      ethers.utils.parseEther("0"), // base rate per year
-      ethers.utils.parseEther("0.05"), // multiplier per year
-      ethers.utils.parseEther("1.365"), // jump multiplier per year
-      ethers.utils.parseEther("0.8"), // kink
-      deployer,
-      "JumpRateModelV4",
-    ],
-  });
+    const modelDefinitions: {
+        [key: string]: IModelDefinition;
+    } = {
+        StableRateModel: {
+            blocksPerYear: 365 * 24 * 60 * 60,
+            baseRatePerYear: ethers.utils.parseEther("0"),
+            multiplerPerYear: ethers.utils.parseEther("0.05"),
+            jumpMultiplierPerYear: ethers.utils.parseEther("1.365"),
+            kink: ethers.utils.parseEther("0.8"),
+            owner: deployer,
+            name: "StableRateModel",
+        },
+        MediumRateModel: {
+            blocksPerYear: 365 * 24 * 60 * 60,
+            baseRatePerYear: ethers.utils.parseEther("0.02"),
+            multiplerPerYear: ethers.utils.parseEther("0.225"),
+            jumpMultiplierPerYear: ethers.utils.parseEther("1.25"),
+            kink: ethers.utils.parseEther("0.8"),
+            owner: deployer,
+            name: "MediumRateModel",
+        },
+        VolatileRateModel: {
+            blocksPerYear: 365 * 24 * 60 * 60,
+            baseRatePerYear: ethers.utils.parseEther("0.025"),
+            multiplerPerYear: ethers.utils.parseEther("0.225"),
+            jumpMultiplierPerYear: ethers.utils.parseEther("5"),
+            kink: ethers.utils.parseEther("0.8"),
+            owner: deployer,
+            name: "VolatileRateModel",
+        },
+    };
 
-  const mediumRateModel = await deploy("MediumRateModel", {
-    from: deployer,
-    log: true,
-    contract: "contracts/JumpRateModelV4.sol:JumpRateModelV4",
-    args: [
-      365 * 24 * 60 * 60, // seconds per year
-      ethers.utils.parseEther("0.02"), // base rate per year
-      ethers.utils.parseEther("0.225"), // multiplier per year
-      ethers.utils.parseEther("1.25"), // jump multiplier per year
-      ethers.utils.parseEther("0.8"), // kink
-      deployer,
-      "JumpRateModelV4",
-    ],
-  });
+    for (let key of Object.keys(modelDefinitions)) {
+        const def = modelDefinitions[key];
+        const existingDeploy = await getOrNull(def.name);
+        if (existingDeploy) return;
 
-  const volatileRateModel = await deploy("VolatileRateModel", {
-    from: deployer,
-    log: true,
-    contract: "contracts/JumpRateModelV4.sol:JumpRateModelV4",
-    args: [
-      365 * 24 * 60 * 60, // seconds per year
-      ethers.utils.parseEther("0.025"), // base rate per year
-      ethers.utils.parseEther("0.225"), // multiplier per year
-      ethers.utils.parseEther("5"), // jump multiplier per year
-      ethers.utils.parseEther("0.8"), // kink
-      deployer,
-      "JumpRateModelV4",
-    ],
-  });
+        await deploy(def.name, {
+            from: deployer,
+            log: true,
+            contract: "contracts/JumpRateModelV4.sol:JumpRateModelV4",
+            args: [
+                def.blocksPerYear, // seconds per year
+                def.baseRatePerYear, // base rate per year
+                def.multiplerPerYear, // multiplier per year
+                def.jumpMultiplierPerYear, // jump multiplier per year
+                def.kink, // kink
+                def.owner,
+                def.name,
+            ],
+        });
+    }
 };
 
+const tags = ["rate-models"];
+export { tags };
+
 export default func;
-func.tags = ["rate-models"];
+

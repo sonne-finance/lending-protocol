@@ -10,20 +10,20 @@ const func: DeployFunction = async ({
 
     const { deployer } = await getNamedAccounts();
 
-    let comptrollerImplDeploy = await getOrNull("ComptrollerImpl");
+    let comptrollerImplDeploy = await getOrNull("ComptrollerImplV2");
     if (!comptrollerImplDeploy) {
-        comptrollerImplDeploy = await deploy("ComptrollerImpl", {
+        comptrollerImplDeploy = await deploy("ComptrollerImplV2", {
             from: deployer,
             log: true,
             contract: "contracts/Comptroller.sol:Comptroller",
             args: [],
         });
     } else {
-        console.log(`Comptroller already deployed at ${comptrollerImplDeploy.address}`);
+        console.log(`ComptrollerImplV2 already deployed at ${comptrollerImplDeploy.address}`);
     }
 };
 
-const tags = ["comptroller"];
+const tags = ["comptroller-v2"];
 export { tags };
 
 export default func;

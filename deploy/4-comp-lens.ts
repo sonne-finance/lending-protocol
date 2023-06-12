@@ -1,19 +1,23 @@
 import { DeployFunction } from "hardhat-deploy/dist/types";
 
 const func: DeployFunction = async ({
-  getNamedAccounts,
-  deployments,
-  ethers,
-  network,
+    getNamedAccounts,
+    deployments: { deploy, getOrNull },
+    ethers,
+    network,
 }) => {
-  const { deploy, get } = deployments;
-  const { deployer } = await getNamedAccounts();
+    const { deployer } = await getNamedAccounts();
 
-  await deploy("BasicLens", {
-    from: deployer,
-    args: [],
-    log: true,
-  });
+    let basicLensDeploy = await getOrNull("BasicLens");
+    if (!basicLensDeploy) {
+        await deploy("BasicLens", {
+            from: deployer,
+            args: [],
+            log: true,
+        });
+    } else {
+        console.log(`BasicLens already deployed at ${basicLensDeploy.address}`);
+    }
 };
 
 export default func;

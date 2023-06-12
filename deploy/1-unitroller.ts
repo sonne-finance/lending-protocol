@@ -9,12 +9,18 @@ const func: DeployFunction = async ({
 }: HardhatRuntimeEnvironment) => {
     const { deployer } = await getNamedAccounts();
 
-    await deploy("Unitroller", {
-        from: deployer,
-        log: true,
-        contract: "contracts/Unitroller.sol:Unitroller",
-        args: [],
-    });
+    let unitrollerDeploy = await getOrNull("Unitroller");
+    console.log(unitrollerDeploy?.address);
+    if (!unitrollerDeploy) {
+        await deploy("Unitroller", {
+            from: deployer,
+            log: true,
+            contract: "contracts/Unitroller.sol:Unitroller",
+            args: [],
+        });
+    } else {
+        console.log(`Unitroller already deployed at ${unitrollerDeploy.address}`);
+    }
 };
 
 const tags = ["unitroller"];
