@@ -67,6 +67,10 @@ contract ExternalRewardDistributor is
         uint256 borrowSpeed
     );
 
+    event ComptrollerUpdated(address indexed comptroller);
+
+    event RewardTokenAdded(address indexed rewardToken);
+
     /// @notice The initial reward index for a market
     uint224 public constant rewardInitialIndex = 1e36;
 
@@ -100,6 +104,17 @@ contract ExternalRewardDistributor is
         comptroller = comptroller_;
     }
 
+    function _setComptroller(address comptroller_) public onlyOwner {
+        require(
+            comptroller_ != address(0),
+            "RewardDistributor: comptroller cannot be zero address"
+        );
+
+        comptroller = comptroller_;
+
+        emit ComptrollerUpdated(comptroller_);
+    }
+
     function _whitelistToken(address rewardToken_) public onlyOwner {
         require(
             rewardToken_ != address(0),
@@ -112,6 +127,8 @@ contract ExternalRewardDistributor is
 
         rewardTokens.push(rewardToken_);
         rewardTokenExists[rewardToken_] = true;
+
+        emit RewardTokenAdded(rewardToken_);
     }
 
     function _updateRewardSpeeds(

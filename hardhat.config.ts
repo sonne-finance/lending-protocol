@@ -41,7 +41,7 @@ const config: HardhatUserConfig = {
             verify: {
                 etherscan: {
                     apiUrl: "https://api.ftmscan.com",
-                    apiKey: process.env.FANTOM_ETHERSCAN_API_KEY,
+                    apiKey: process.env.FANTOM_ETHERSCAN_KEY,
                 },
             },
         },
@@ -53,7 +53,7 @@ const config: HardhatUserConfig = {
             verify: {
                 etherscan: {
                     apiUrl: "https://api-optimistic.etherscan.io",
-                    apiKey: process.env.OPTMISM_ETHERSCAN_API_KEY,
+                    apiKey: process.env.OPTIMISM_ETHERSCAN_KEY,
                 },
             },
         },
