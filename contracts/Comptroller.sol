@@ -1921,7 +1921,6 @@ contract Comptroller is
         virtual
         returns (address)
     {
-        // hardhat
-        return 0x0E801D84Fa97b50751Dbf25036d067dCf18858bF;
+        return 0x938Ed674a5580c9217612dE99Da8b5d476dCF13f;
     }
 }
