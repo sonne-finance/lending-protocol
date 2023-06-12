@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.10;
 
-import "./Ownership/Ownable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 import "./CTokenInterfaces.sol";
 import "./EIP20Interface.sol";
@@ -37,7 +38,11 @@ struct RewardAccountState {
  * @notice This contract is used to distribute rewards to users for supplying and borrowing assets.
  * Each supply and borrow changing action from comptroller will trigger index update for each reward token.
  */
-contract ExternalRewardDistributorV1 is Ownable, ExponentialNoError {
+contract ExternalRewardDistributor is
+    Initializable,
+    OwnableUpgradeable,
+    ExponentialNoError
+{
     event RewardAccrued(
         address indexed rewardToken,
         address indexed user,
@@ -89,7 +94,9 @@ contract ExternalRewardDistributorV1 is Ownable, ExponentialNoError {
         _;
     }
 
-    constructor(address comptroller_) {
+    function initialize(address comptroller_) public initializer {
+        __Ownable_init();
+
         comptroller = comptroller_;
     }
 
@@ -405,5 +412,10 @@ contract ExternalRewardDistributorV1 is Ownable, ExponentialNoError {
             return 0;
         }
         return amount;
+    }
+
+    /** Getters */
+    function getRewardTokens() public view returns (address[] memory) {
+        return rewardTokens;
     }
 }
