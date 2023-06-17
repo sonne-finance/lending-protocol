@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.10;
 
-import "./Ownership/Ownable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 import "./CTokenInterfaces.sol";
 import "./EIP20Interface.sol";
@@ -37,7 +38,11 @@ struct RewardAccountState {
  * @notice This contract is used to distribute rewards to users for supplying and borrowing assets.
  * Each supply and borrow changing action from comptroller will trigger index update for each reward token.
  */
-contract ExternalRewardDistributorV1 is Ownable, ExponentialNoError {
+contract ExternalRewardDistributor is
+    Initializable,
+    OwnableUpgradeable,
+    ExponentialNoError
+{
     event RewardAccrued(
         address indexed rewardToken,
         address indexed user,
@@ -61,6 +66,10 @@ contract ExternalRewardDistributorV1 is Ownable, ExponentialNoError {
         address indexed cToken,
         uint256 borrowSpeed
     );
+
+    event ComptrollerUpdated(address indexed comptroller);
+
+    event RewardTokenAdded(address indexed rewardToken);
 
     /// @notice The initial reward index for a market
     uint224 public constant rewardInitialIndex = 1e36;
@@ -89,8 +98,21 @@ contract ExternalRewardDistributorV1 is Ownable, ExponentialNoError {
         _;
     }
 
-    constructor(address comptroller_) {
+    function initialize(address comptroller_) public initializer {
+        __Ownable_init();
+
         comptroller = comptroller_;
+    }
+
+    function _setComptroller(address comptroller_) public onlyOwner {
+        require(
+            comptroller_ != address(0),
+            "RewardDistributor: comptroller cannot be zero address"
+        );
+
+        comptroller = comptroller_;
+
+        emit ComptrollerUpdated(comptroller_);
     }
 
     function _whitelistToken(address rewardToken_) public onlyOwner {
@@ -105,6 +127,8 @@ contract ExternalRewardDistributorV1 is Ownable, ExponentialNoError {
 
         rewardTokens.push(rewardToken_);
         rewardTokenExists[rewardToken_] = true;
+
+        emit RewardTokenAdded(rewardToken_);
     }
 
     function _updateRewardSpeeds(
@@ -405,5 +429,10 @@ contract ExternalRewardDistributorV1 is Ownable, ExponentialNoError {
             return 0;
         }
         return amount;
+    }
+
+    /** Getters */
+    function getRewardTokens() public view returns (address[] memory) {
+        return rewardTokens;
     }
 }

@@ -9,14 +9,9 @@ interface ComptrollerLensInterface {
 
     function oracle() external view returns (PriceOracle);
 
-    function getAccountLiquidity(address)
-        external
-        view
-        returns (
-            uint256,
-            uint256,
-            uint256
-        );
+    function getAccountLiquidity(
+        address
+    ) external view returns (uint256, uint256, uint256);
 
     function getAssetsIn(address) external view returns (CToken[] memory);
 
@@ -33,16 +28,75 @@ interface ComptrollerLensInterface {
     function compBorrowSpeeds(address) external view returns (uint256);
 
     function borrowCaps(address) external view returns (uint256);
+
+    function getExternalRewardDistributorAddress()
+        external
+        view
+        returns (address);
+}
+
+interface ExternalRewardDistributorInterface {
+    function getRewardTokens() external view returns (address[] memory);
+
+    function rewardTokenExists(address token) external view returns (bool);
 }
 
 contract BasicLens {
-    function compAccued(ComptrollerLensInterface comptroller, address account)
+    function rewardsAccrued(
+        ComptrollerLensInterface comptroller,
+        address account
+    )
         external
-        returns (uint256 accrued)
+        returns (address[] memory rewardTokens, uint256[] memory accrued)
     {
-        address comp = comptroller.getCompAddress();
-        uint256 balance = EIP20Interface(comp).balanceOf(account);
+        address externalRewardDistributor = comptroller
+            .getExternalRewardDistributorAddress();
+
+        rewardTokens = ExternalRewardDistributorInterface(
+            externalRewardDistributor
+        ).getRewardTokens();
+
+        address defaultRewardToken = comptroller.getCompAddress();
+        bool doesDefaultTokenExist = ExternalRewardDistributorInterface(
+            externalRewardDistributor
+        ).rewardTokenExists(defaultRewardToken);
+
+        if (!doesDefaultTokenExist) {
+            address[] memory tempRewardTokens = new address[](
+                rewardTokens.length + 1
+            );
+            tempRewardTokens[0] = defaultRewardToken;
+            for (uint256 i = 0; i < rewardTokens.length; i++) {
+                tempRewardTokens[i + 1] = rewardTokens[i];
+            }
+            rewardTokens = tempRewardTokens;
+        }
+
+        uint256[] memory beforeBalances = getBalancesInternal(
+            rewardTokens,
+            account
+        );
+
         comptroller.claimComp(account);
-        accrued = EIP20Interface(comp).balanceOf(account) - balance;
+
+        uint256[] memory afterBalances = getBalancesInternal(
+            rewardTokens,
+            account
+        );
+
+        accrued = new uint256[](rewardTokens.length);
+        for (uint256 i = 0; i < rewardTokens.length; i++) {
+            accrued[i] = afterBalances[i] - beforeBalances[i];
+        }
+    }
+
+    function getBalancesInternal(
+        address[] memory tokens,
+        address account
+    ) internal view returns (uint256[] memory balances) {
+        balances = new uint256[](tokens.length);
+        for (uint256 i = 0; i < tokens.length; i++) {
+            balances[i] = EIP20Interface(tokens[i]).balanceOf(account);
+        }
     }
 }
