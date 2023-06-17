@@ -8,16 +8,11 @@ const func: DeployFunction = async ({
 }) => {
     const { deployer } = await getNamedAccounts();
 
-    let basicLensDeploy = await getOrNull("BasicLens");
-    if (!basicLensDeploy) {
-        await deploy("BasicLens", {
-            from: deployer,
-            args: [],
-            log: true,
-        });
-    } else {
-        console.log(`BasicLens already deployed at ${basicLensDeploy.address}`);
-    }
+    await deploy("BasicLens", {
+        from: deployer,
+        args: [],
+        log: true,
+    });
 };
 
 export default func;
