@@ -9,7 +9,8 @@
         "coverage": "npx hardhat coverage",
         "deploy:ganache": "npx hardhat deploy --network ganache",
         "deploy:optimism": "npx hardhat deploy --network optimism",
-        "deploy:fantom": "npx hardhat deploy --network fantom"
+        "deploy:fantom": "npx hardhat deploy --network fantom",
+        "dev": "remixd -s $(pwd) --remix-ide https://remix.ethereum.org"
     },
     "repository": "git@github.com:compound-finance/compound-protocol.git",
     "author": "Compound Finance",
