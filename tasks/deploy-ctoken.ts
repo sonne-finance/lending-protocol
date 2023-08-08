@@ -3,12 +3,12 @@ import { task, types } from "hardhat/config";
 /**
  * npx hardhat deploy-ctoken \
  * --network optimism \
- * --underlying-address 0x1F32b1c2345538c0c6f582fCB022739c4A194Ebb \
+ * --underlying-address 0xdFA46478F9e5EA86d57387849598dbFB2e964b02 \
  * --underlying-decimals 18 \
- * --underlying-name "Wrapped liquid staked Ether 2.0" \
- * --underlying-symbol "wstETH" \
+ * --underlying-name "miMatic" \
+ * --underlying-symbol "MAI" \
  * --decimals 8 \
- * --comptroller-key "ComptrollerV1" \
+ * --comptroller-key "Unitroller" \
  * --interest-rate-model-key "MediumRateModel" \
  * --owner 0x37fF10390F22fABDc2137E428A6E6965960D60b6
  */
