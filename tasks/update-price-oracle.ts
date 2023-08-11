@@ -14,8 +14,6 @@ task("update-price-oracle", "Updates the price oracle of the comptroller")
             deployments: { deploy, get, all },
         } = hre;
 
-        const priceFeedConfig = protocolConfig.priceFeeds[network.name];
-
         console.log("running task: update-price-oracle");
 
         const ComptrollerProxy = await ethers.getContract("Unitroller");

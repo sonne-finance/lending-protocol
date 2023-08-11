@@ -1360,6 +1360,23 @@ contract Comptroller is
     }
 
     /**
+     * @notice Admin function to change the Supply Cap Guardian
+     * @param newSupplyCapGuardian The address of the new Supply Cap Guardian
+     */
+    function _setSupplyCapGuardian(address newSupplyCapGuardian) external {
+        require(msg.sender == admin, "only admin can set supply cap guardian");
+
+        // Save current value for inclusion in log
+        address oldSupplyCapGuardian = supplyCapGuardian;
+
+        // Store supplyCapGuardian with value newSupplyCapGuardian
+        supplyCapGuardian = newSupplyCapGuardian;
+
+        // Emit NewSupplyCapGuardian(OldSupplyCapGuardian, NewSupplyCapGuardian)
+        emit NewSupplyCapGuardian(oldSupplyCapGuardian, newSupplyCapGuardian);
+    }
+
+    /**
      * @notice Admin function to change the Pause Guardian
      * @param newPauseGuardian The address of the new Pause Guardian
      * @return uint 0=success, otherwise a failure. (See enum Error for details)
@@ -1965,6 +1982,6 @@ contract Comptroller is
         virtual
         returns (address)
     {
-        return address(0);
+        return 0xd86C8d4279CCaFbec840c782BcC50D201f277419;
     }
 }

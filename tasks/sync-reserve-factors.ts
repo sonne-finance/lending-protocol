@@ -14,14 +14,14 @@ task("sync-reserve-factors", "Sync Reserve factors with config").setAction(
             deployments: { deploy, getOrNull, all },
         } = hre;
 
-        const priceFeedConfig = protocolConfig.priceFeeds[network.name];
+        const marketConfig = protocolConfig[network.name].markets;
 
         const { deployer } = await getNamedAccounts();
 
         const ComptrollerProxy = await ethers.getContract("Unitroller");
         const Comptroller = await ethers.getContractAt(
             "Comptroller",
-            ComptrollerProxy.address
+            ComptrollerProxy.address,
         );
 
         const existingCTokens = await Comptroller.getAllMarkets();
@@ -31,27 +31,32 @@ task("sync-reserve-factors", "Sync Reserve factors with config").setAction(
         for (const cToken of existingCTokens) {
             const cTokenContract = await ethers.getContractAt("CToken", cToken);
             const symbol = await cTokenContract.symbol();
-            const config = priceFeedConfig[symbol];
+            const config = marketConfig[symbol];
+            if (
+                config.reserveFactor == undefined ||
+                config.reserveFactor == null
+            )
+                continue;
 
             // set reserve factor
             const reserveFactor = await cTokenContract.reserveFactorMantissa();
             const newReserveFactor = ethers.utils.parseEther(
-                config.reserveFactor
+                `${config.reserveFactor}`,
             );
             if (!reserveFactor.eq(newReserveFactor)) {
                 const tx2 = await cTokenContract._setReserveFactor(
-                    newReserveFactor
+                    newReserveFactor,
                 );
                 txPromises.push(tx2.wait());
 
                 console.log(
                     "set reserve factor",
                     symbol,
-                    newReserveFactor.toString()
+                    newReserveFactor.toString(),
                 );
             }
         }
 
         await Promise.all(txPromises);
-    }
+    },
 );

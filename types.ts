@@ -5,13 +5,14 @@ export type ProtocolConfig = {
 export type ProtocolNetworkConfig = {
     timelock?: `0x${string}`;
     multisig?: `0x${string}`;
-    priceFeeds: {
-        [symbol: string]: PriceFeedConfig;
+    markets: {
+        [symbol: string]: MarketConfig;
     };
 };
 
-export type PriceFeedConfig = {
+export type MarketConfig = {
     source: "chainlink";
     priceFeed: `0x${string}`;
     baseUnit: `1${string}`;
+    reserveFactor?: number;
 };

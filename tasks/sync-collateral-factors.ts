@@ -16,7 +16,7 @@ task(
         deployments: { deploy, getOrNull, all },
     } = hre;
 
-    const priceFeedConfig = protocolConfig.priceFeeds[network.name];
+    const priceFeedConfig = protocolConfig[network.name].markets;
 
     const { deployer } = await getNamedAccounts();
 
