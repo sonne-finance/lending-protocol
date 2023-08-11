@@ -14,7 +14,7 @@ import "./Governance/Comp.sol";
  * @author Compound
  */
 contract Comptroller is
-    ComptrollerV7Storage,
+    ComptrollerV8Storage,
     ComptrollerInterface,
     ComptrollerErrorReporter,
     ExponentialNoError
@@ -93,10 +93,19 @@ contract Comptroller is
     /// @notice Emitted when borrow cap for a cToken is changed
     event NewBorrowCap(CToken indexed cToken, uint256 newBorrowCap);
 
+    /// @notice Emitted when supply cap for a cToken is changed
+    event NewSupplyCap(CToken indexed cToken, uint256 newSupplyCap);
+
     /// @notice Emitted when borrow cap guardian is changed
     event NewBorrowCapGuardian(
         address oldBorrowCapGuardian,
         address newBorrowCapGuardian
+    );
+
+    /// @notice Emitted when supply cap guardian is changed
+    event NewSupplyCapGuardian(
+        address oldSupplyCapGuardian,
+        address newSupplyCapGuardian
     );
 
     /// @notice Emitted when COMP is granted by admin
@@ -341,9 +350,15 @@ contract Comptroller is
         actualMintAmount;
         mintTokens;
 
-        // Shh - we don't ever want this hook to be marked pure
-        if (false) {
-            maxAssets = maxAssets;
+        uint256 supplyCap = supplyCaps[cToken];
+        // Supply cap of 0 corresponds to unlimited borrowing
+        if (supplyCap != 0) {
+            uint256 totalSupply = CToken(cToken).totalSupply();
+            Exp memory exchangeRate = Exp({
+                mantissa: CToken(cToken).exchangeRateStored()
+            });
+            uint256 totalAmount = mul_ScalarTruncate(exchangeRate, totalSupply);
+            require(totalAmount <= supplyCap, "market supply cap reached");
         }
     }
 
@@ -1299,6 +1314,35 @@ contract Comptroller is
     }
 
     /**
+     * @notice Set the given supply caps for the given cToken markets. Supplying that brings total supply to or above supply cap will revert.
+     * @dev Admin or supplyCapGuardian function to set the supply caps. A supply cap of 0 corresponds to unlimited supplying.
+     * @param cTokens The addresses of the markets (tokens) to change the supply caps for
+     * @param newSupplyCaps The new supply cap values in underlying to be set. A value of 0 corresponds to unlimited supplying.
+     */
+    function _setMarketSupplyCaps(
+        CToken[] calldata cTokens,
+        uint256[] calldata newSupplyCaps
+    ) external {
+        require(
+            msg.sender == admin || msg.sender == supplyCapGuardian,
+            "only admin or supply cap guardian can set supply caps"
+        );
+
+        uint256 numMarkets = cTokens.length;
+        uint256 numSupplyCaps = newSupplyCaps.length;
+
+        require(
+            numMarkets != 0 && numMarkets == numSupplyCaps,
+            "invalid input"
+        );
+
+        for (uint256 i = 0; i < numMarkets; i++) {
+            supplyCaps[address(cTokens[i])] = newSupplyCaps[i];
+            emit NewSupplyCap(cTokens[i], newSupplyCaps[i]);
+        }
+    }
+
+    /**
      * @notice Admin function to change the Borrow Cap Guardian
      * @param newBorrowCapGuardian The address of the new Borrow Cap Guardian
      */
@@ -1908,7 +1952,7 @@ contract Comptroller is
      * @return The address of SONNE
      */
     function getCompAddress() public view virtual returns (address) {
-        return 0x1DB2466d9F5e10D7090E7152B68d62703a2245F0;
+        return 0x22a2488fE295047Ba13BD8cCCdBC8361DBD8cf7c;
     }
 
     /**
@@ -1921,6 +1965,6 @@ contract Comptroller is
         virtual
         returns (address)
     {
-        return 0x938Ed674a5580c9217612dE99Da8b5d476dCF13f;
+        return address(0);
     }
 }

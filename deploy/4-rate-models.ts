@@ -1,4 +1,3 @@
-
 import { BigNumber } from "ethers";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
@@ -79,4 +78,3 @@ const tags = ["rate-models"];
 export { tags };
 
 export default func;
-

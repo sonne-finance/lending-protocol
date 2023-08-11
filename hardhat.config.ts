@@ -33,18 +33,6 @@ const config: HardhatUserConfig = {
             url: "http://localhost:8545",
             accounts: [process.env.localhost!],
         },
-        fantom: {
-            chainId: 250,
-            url: process.env.FANTOM_RPC_URL!,
-            accounts: [process.env.FANTOM_DEPLOYER_KEY!],
-            gasPrice: 15000000000,
-            verify: {
-                etherscan: {
-                    apiUrl: "https://api.ftmscan.com",
-                    apiKey: process.env.FANTOM_ETHERSCAN_KEY,
-                },
-            },
-        },
         optimism: {
             chainId: 10,
             url: process.env.OPTIMISM_RPC_URL!,
@@ -54,6 +42,18 @@ const config: HardhatUserConfig = {
                 etherscan: {
                     apiUrl: "https://api-optimistic.etherscan.io",
                     apiKey: process.env.OPTIMISM_ETHERSCAN_KEY,
+                },
+            },
+        },
+        base: {
+            chainId: 8453,
+            url: process.env.BASE_RPC_URL!,
+            //ovm: true,
+            accounts: [process.env.BASE_DEPLOYER_KEY!],
+            verify: {
+                etherscan: {
+                    apiUrl: "https://api.basescan.org",
+                    apiKey: process.env.BASE_ETHERSCAN_KEY,
                 },
             },
         },

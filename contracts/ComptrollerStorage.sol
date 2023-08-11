@@ -151,3 +151,11 @@ contract ComptrollerV7Storage is ComptrollerV6Storage {
     /// @notice Accounting storage mapping account addresses to how much COMP they owe the protocol.
     mapping(address => uint256) public compReceivable;
 }
+
+contract ComptrollerV8Storage is ComptrollerV7Storage {
+    // @notice The supplyCapGuardian can set supplyCaps to any number for any market. Lowering the supply cap could disable supplying on the given market.
+    address public supplyCapGuardian;
+
+    // @notice Supply caps enforced by supplyAllowed for each cToken address. Defaults to zero which corresponds to unlimited supplying.
+    mapping(address => uint256) public supplyCaps;
+}

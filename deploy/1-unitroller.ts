@@ -10,7 +10,6 @@ const func: DeployFunction = async ({
     const { deployer } = await getNamedAccounts();
 
     let unitrollerDeploy = await getOrNull("Unitroller");
-    console.log(unitrollerDeploy?.address);
     if (!unitrollerDeploy) {
         await deploy("Unitroller", {
             from: deployer,
@@ -19,7 +18,9 @@ const func: DeployFunction = async ({
             args: [],
         });
     } else {
-        console.log(`Unitroller already deployed at ${unitrollerDeploy.address}`);
+        console.log(
+            `Unitroller already deployed at ${unitrollerDeploy.address}`,
+        );
     }
 };
 

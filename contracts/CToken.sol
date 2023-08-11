@@ -571,8 +571,7 @@ abstract contract CToken is
         emit Transfer(address(this), minter, mintTokens);
 
         /* We call the defense hook */
-        // unused function
-        // comptroller.mintVerify(address(this), minter, actualMintAmount, mintTokens);
+        comptroller.mintVerify(address(this), minter, actualMintAmount, mintTokens);
     }
 
     /**
