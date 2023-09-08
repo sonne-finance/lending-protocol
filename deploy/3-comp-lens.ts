@@ -6,6 +6,7 @@ const func: DeployFunction = async ({
     ethers,
     network,
 }) => {
+    return false;
     const { deployer } = await getNamedAccounts();
 
     await deploy("BasicLens", {

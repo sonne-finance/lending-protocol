@@ -1,13 +1,12 @@
-import { BigNumber } from "ethers";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 interface IModelDefinition {
     blocksPerYear: number;
-    baseRatePerYear: BigNumber;
-    multiplerPerYear: BigNumber;
-    jumpMultiplierPerYear: BigNumber;
-    kink: BigNumber;
+    baseRatePerYear: bigint;
+    multiplerPerYear: bigint;
+    jumpMultiplierPerYear: bigint;
+    kink: bigint;
     owner: string;
     name: string;
 }
@@ -18,6 +17,7 @@ const func: DeployFunction = async ({
     ethers,
     network,
 }: HardhatRuntimeEnvironment) => {
+    return false;
     const { deployer } = await getNamedAccounts();
 
     const modelDefinitions: {
@@ -25,28 +25,28 @@ const func: DeployFunction = async ({
     } = {
         StableRateModel: {
             blocksPerYear: 365 * 24 * 60 * 60,
-            baseRatePerYear: ethers.utils.parseEther("0"),
-            multiplerPerYear: ethers.utils.parseEther("0.05"),
-            jumpMultiplierPerYear: ethers.utils.parseEther("1.365"),
-            kink: ethers.utils.parseEther("0.8"),
+            baseRatePerYear: ethers.parseEther("0"),
+            multiplerPerYear: ethers.parseEther("0.05"),
+            jumpMultiplierPerYear: ethers.parseEther("1.365"),
+            kink: ethers.parseEther("0.8"),
             owner: deployer,
             name: "StableRateModel",
         },
         MediumRateModel: {
             blocksPerYear: 365 * 24 * 60 * 60,
-            baseRatePerYear: ethers.utils.parseEther("0.02"),
-            multiplerPerYear: ethers.utils.parseEther("0.225"),
-            jumpMultiplierPerYear: ethers.utils.parseEther("1.25"),
-            kink: ethers.utils.parseEther("0.8"),
+            baseRatePerYear: ethers.parseEther("0.02"),
+            multiplerPerYear: ethers.parseEther("0.225"),
+            jumpMultiplierPerYear: ethers.parseEther("1.25"),
+            kink: ethers.parseEther("0.8"),
             owner: deployer,
             name: "MediumRateModel",
         },
         VolatileRateModel: {
             blocksPerYear: 365 * 24 * 60 * 60,
-            baseRatePerYear: ethers.utils.parseEther("0.025"),
-            multiplerPerYear: ethers.utils.parseEther("0.225"),
-            jumpMultiplierPerYear: ethers.utils.parseEther("5"),
-            kink: ethers.utils.parseEther("0.8"),
+            baseRatePerYear: ethers.parseEther("0.025"),
+            multiplerPerYear: ethers.parseEther("0.225"),
+            jumpMultiplierPerYear: ethers.parseEther("5"),
+            kink: ethers.parseEther("0.8"),
             owner: deployer,
             name: "VolatileRateModel",
         },

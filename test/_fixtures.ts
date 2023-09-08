@@ -1,70 +1,111 @@
 import { deployments, ethers } from "hardhat";
+import { getImpersonatedSigner } from "./_utils";
+import { BaseContract, Contract } from "ethers";
 
-const setupFixture = deployments.createFixture(
-    async ({ deployments, companionNetworks }, options) => {
+export interface IMarket {
+    cToken: Contract;
+    underlying: Contract;
+    cash: bigint;
+    totalReserves: bigint;
+}
+export interface IDeployedFixtureOutput {
+    unitroller: Contract;
+    comptroller: Contract;
+    rewardDistributor: Contract;
+    markets: { [key: string]: IMarket };
+    timelock: BaseContract;
+}
+
+const deployedFixture = deployments.createFixture<IDeployedFixtureOutput, any>(
+    async ({ deployments, network, companionNetworks }, options) => {
         await deployments.fixture(undefined, {
             keepExistingDeployments: true,
         });
 
         const companionDeployments = companionNetworks["mainnet"].deployments;
-        const [deployer] = await ethers.getSigners();
+        const [deployer, user1, user2] = await ethers.getSigners();
 
-        const comptrollerDeploy = await deployments.deploy("Comptroller", {
-            from: deployer.address,
-            log: true,
-            contract: "contracts/Comptroller.sol:Comptroller",
-        });
+        const timelock = await ethers.getContract("SonneTimelockController");
+        const timelockAddress = await timelock.getAddress();
+        const timelockSigner = await getImpersonatedSigner(timelockAddress);
 
-        const unitrollerDeploy = await companionDeployments.get(
-            "ComptrollerV1",
-        );
+        /* Unitroller */
+        const unitrollerDeploy = await companionDeployments.get("Unitroller");
+        const unitrollerAddress = unitrollerDeploy.address;
         const unitroller = await ethers.getContractAt(
             "Unitroller",
-            unitrollerDeploy.address,
+            unitrollerAddress,
         );
-        // set storage to new comptroller deploy
-        await ethers.provider.send("hardhat_setStorageAt", [
-            unitrollerDeploy.address,
-            "0x2",
-            ethers.utils.hexZeroPad(comptrollerDeploy.address, 32),
-        ]);
+        // set timelock as admin
+        const unitrollerAdminAddress = await unitroller.admin();
+        const unitrollerAdminSigner = await getImpersonatedSigner(
+            unitrollerAdminAddress,
+        );
+        await unitroller
+            .connect(unitrollerAdminSigner)
+            ._setPendingAdmin(timelockAddress);
+        await unitroller.connect(timelockSigner)._acceptAdmin();
 
         const comptroller = await ethers.getContractAt(
             "Comptroller",
-            unitrollerDeploy.address,
+            unitrollerAddress,
         );
 
-        const rewardDistributorDeploy = await deployments.deploy(
-            "RewardDistributor",
-            {
-                from: deployer.address,
-                args: [comptroller.address],
-                log: true,
-                contract:
-                    "contracts/ExternalRewardDistributor.sol:ExternalRewardDistributorV1",
-            },
+        const rewardDistributorDeploy = await companionDeployments.get(
+            "ExternalRewardDistributor",
         );
+        const rewardDistributorAddress = rewardDistributorDeploy.address;
         const rewardDistributor = await ethers.getContractAt(
-            "ExternalRewardDistributorV1",
-            rewardDistributorDeploy.address,
+            "ExternalRewardDistributor",
+            rewardDistributorAddress,
         );
 
-        // read markets from comptroller and create contracts
-        const markets = await comptroller.getAllMarkets();
-        const cTokens = {};
-        for (let i = 0; i < markets.length; i++) {
-            const market = markets[i];
-            const cToken = await ethers.getContractAt("CToken", market);
+        /* Markets */
+        const marketAddresses = await comptroller.getAllMarkets();
+        const markets: {
+            [key: string]: IMarket;
+        } = {};
+        for (let i = 0; i < marketAddresses.length; i++) {
+            const marketAddress = marketAddresses[i];
+            const cToken = await ethers.getContractAt("CErc20", marketAddress);
+
             const symbol = await cToken.symbol();
-            cTokens[symbol] = cToken;
+            const underlyingAddress = await cToken.underlying();
+            const underlying = await ethers.getContractAt(
+                "IERC20",
+                underlyingAddress,
+            );
+            markets[symbol] = {
+                cToken,
+                underlying,
+                cash: await cToken.getCash(),
+                totalReserves: await cToken.totalReserves(),
+            };
         }
 
+        // set timelock as admin
+        await Promise.all(
+            Object.values(markets).map(async (market) => {
+                const cToken = market.cToken;
+                const cTokenAdminAddress = await cToken.admin();
+                const cTokenAdminSigner = await getImpersonatedSigner(
+                    cTokenAdminAddress,
+                );
+                await cToken
+                    .connect(cTokenAdminSigner)
+                    ._setPendingAdmin(timelockAddress);
+                await cToken.connect(timelockSigner)._acceptAdmin();
+            }),
+        );
+
         return {
+            unitroller,
             comptroller,
             rewardDistributor,
-            cTokens,
+            markets,
+            timelock,
         };
     },
 );
 
-export { setupFixture };
+export { deployedFixture };

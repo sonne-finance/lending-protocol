@@ -15,4 +15,5 @@ export type MarketConfig = {
     priceFeed: `0x${string}`;
     baseUnit: `1${string}`;
     reserveFactor?: number;
+    collateralFactor?: number;
 };

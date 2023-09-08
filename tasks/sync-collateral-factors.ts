@@ -37,14 +37,13 @@ task(
 
         /*  DO NOT SET COLLATERAL FACTOR BEFORE MINTING SOME */
         const totalSupply = await cTokenContract.totalSupply();
-        console.log(symbol, totalSupply.toString(), config);
         if (totalSupply.lte(BigNumber.from(1000))) continue;
 
         // set collateral factor
         const collateralFactor = (await Comptroller.markets(cToken))
             .collateralFactorMantissa;
         const newCollateralFactor = ethers.utils.parseEther(
-            config.collateralFactor,
+            `${config.collateralFactor}`,
         );
 
         if (!collateralFactor.eq(newCollateralFactor)) {

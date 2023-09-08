@@ -1,14 +1,13 @@
 import * as dotenv from "dotenv";
 dotenv.config();
 
-import "@nomicfoundation/hardhat-network-helpers";
-import "@nomiclabs/hardhat-ethers";
-import "@nomiclabs/hardhat-waffle";
+import "@nomicfoundation/hardhat-ethers";
+import "@nomicfoundation/hardhat-toolbox";
 import "@openzeppelin/hardhat-upgrades";
 import "@typechain/hardhat";
 import "hardhat-deploy";
+import "hardhat-deploy-ethers";
 import { HardhatUserConfig } from "hardhat/config";
-import "solidity-coverage";
 
 import "./tasks";
 
@@ -17,21 +16,19 @@ const config: HardhatUserConfig = {
     networks: {
         hardhat: {
             chainId: 10,
-            companionNetworks: {
-                mainnet: process.env.FORKING_NETWORK?.toLowerCase()!,
-            },
             forking: {
                 enabled: true,
+                targetName: process.env.FORKING_NETWORK?.toLowerCase()!,
                 url: process.env[
                     `${process.env.FORKING_NETWORK?.toUpperCase()}_RPC_URL`
                 ]!,
+                blockNumber: 109287000,
+            },
+            companionNetworks: {
+                mainnet: "optimism",
             },
             autoImpersonate: true,
             gasPrice: 1000000000,
-        },
-        localhost: {
-            url: "http://localhost:8545",
-            accounts: [process.env.localhost!],
         },
         optimism: {
             chainId: 10,
