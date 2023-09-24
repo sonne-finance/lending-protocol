@@ -1,16 +1,17 @@
+import { deployProxyImpl } from "@openzeppelin/hardhat-upgrades/dist/utils";
 import { task, types } from "hardhat/config";
 
 /**
  * npx hardhat deploy-ctoken \
- * --network optimism \
- * --underlying-address 0xdFA46478F9e5EA86d57387849598dbFB2e964b02 \
- * --underlying-decimals 18 \
- * --underlying-name "miMatic" \
- * --underlying-symbol "MAI" \
+ * --network base \
+ * --underlying-address 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913 \
+ * --underlying-decimals 6 \
+ * --underlying-name "USD Coin" \
+ * --underlying-symbol "USDC" \
  * --decimals 8 \
  * --comptroller-key "Unitroller" \
- * --interest-rate-model-key "MediumRateModel" \
- * --owner 0x37fF10390F22fABDc2137E428A6E6965960D60b6
+ * --interest-rate-model-key "StableRateModel" \
+ * --owner 0x81077d101293eCa45114AF55A63897cEc8732Fd3 \
  * --proxy true
  */
 
@@ -65,7 +66,7 @@ task("deploy-ctoken", "Deploys a new ctoken")
 
         const comptrollerDeploy = await get(comptrollerKey);
         const interestRateModelDeploy = await get(interestRateModelKey);
-        const initialExchangeRateMantissa = ethers.utils.parseUnits(
+        const initialExchangeRateMantissa = ethers.parseUnits(
             "0.02",
             underlyingDecimals + 18 - decimals,
         );
@@ -91,6 +92,7 @@ task("deploy-ctoken", "Deploys a new ctoken")
                     log: true,
                     contract: "contracts/CErc20Upgradable.sol:CErc20Upgradable",
                     proxy: {
+                        owner: owner,
                         proxyContract: "OpenZeppelinTransparentProxy",
                         execute: {
                             init: {

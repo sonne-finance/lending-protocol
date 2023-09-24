@@ -69,21 +69,28 @@ const config: ProtocolConfig = {
                 priceFeed: "0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70",
                 baseUnit: "1000000000000000000",
                 reserveFactor: 0.15,
-                collateralFactor: 0.70
+                collateralFactor: 0.7,
+            },
+            sobUSDC: {
+                source: "chainlink",
+                priceFeed: "0x7e860098F58bBFC8648a4311b374B1D669a2bc6B",
+                baseUnit: "1000000",
+                reserveFactor: 0.13,
+                collateralFactor: 0.85,
             },
             sobUSDbC: {
                 source: "chainlink",
                 priceFeed: "0x7e860098F58bBFC8648a4311b374B1D669a2bc6B",
                 baseUnit: "1000000",
                 reserveFactor: 0.13,
-                collateralFactor: 0.85
+                collateralFactor: 0.85,
             },
             sobDAI: {
                 source: "chainlink",
                 priceFeed: "0x591e79239a7d679378eC8c847e5038150364C78F",
                 baseUnit: "1000000000000000000",
                 reserveFactor: 0.13,
-                collateralFactor: 0.85
+                collateralFactor: 0.85,
             },
         },
     },
