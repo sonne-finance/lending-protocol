@@ -14,6 +14,8 @@ export type MarketConfig = {
     source: "chainlink";
     priceFeed: `0x${string}`;
     baseUnit: `1${string}`;
+    underlyingDecimals: number;
     reserveFactor?: number;
     collateralFactor?: number;
+    toSymbol?: string;
 };
