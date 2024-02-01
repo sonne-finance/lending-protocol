@@ -4,13 +4,13 @@ import { task, types } from "hardhat/config";
 /**
  * npx hardhat deploy-ctoken \
  * --network base \
- * --underlying-address 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913 \
- * --underlying-decimals 6 \
- * --underlying-name "USD Coin" \
- * --underlying-symbol "USDC" \
+ * --underlying-address 0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452 \
+ * --underlying-decimals 18 \
+ * --underlying-name "Wrapped liquid staked Ether 2.0" \
+ * --underlying-symbol "wstETH" \
  * --decimals 8 \
  * --comptroller-key "Unitroller" \
- * --interest-rate-model-key "StableRateModel" \
+ * --interest-rate-model-key "VolatileRateModel" \
  * --owner 0x81077d101293eCa45114AF55A63897cEc8732Fd3 \
  * --proxy true
  */

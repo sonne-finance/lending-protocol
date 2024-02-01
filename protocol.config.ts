@@ -92,6 +92,20 @@ const config: ProtocolConfig = {
                 reserveFactor: 0.13,
                 collateralFactor: 0.85,
             },
+            sobcbETH: {
+                source: "chainlink",
+                priceFeed: "0xd7818272B9e248357d13057AAb0B417aF31E817d",
+                baseUnit: "1000000000000000000",
+                reserveFactor: 0.18,
+                collateralFactor: 0.65,
+            },
+            sobwstETH: {
+                source: "chainlink",
+                priceFeed: "0x",
+                baseUnit: "1000000000000000000",
+                reserveFactor: 0.18,
+                collateralFactor: 0.60,
+            }
         },
     },
 };
