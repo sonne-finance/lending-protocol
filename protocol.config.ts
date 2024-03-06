@@ -71,6 +71,12 @@ const config: ProtocolConfig = {
                 baseUnit: "1000000000000000000",
                 underlyingDecimals: 18,
             },
+            soUSDCnative: {
+                source: "chainlink",
+                priceFeed: "0x16a9FA2FDa030272Ce99B29CF780dFA30361E0f3",
+                baseUnit: "1000000",
+                underlyingDecimals: 6,
+            },
         },
     },
     base: {

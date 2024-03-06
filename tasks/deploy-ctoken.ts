@@ -3,17 +3,30 @@ import { task, types } from "hardhat/config";
 
 /**
  * npx hardhat deploy-ctoken \
- * --network base \
- * --underlying-address 0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452 \
- * --underlying-decimals 18 \
- * --underlying-name "Wrapped liquid staked Ether 2.0" \
- * --underlying-symbol "wstETH" \
+ * --network optimism \
+ * --underlying-address 0x0b2c639c533813f4aa9d7837caf62653d097ff85 \
+ * --underlying-decimals 6 \
+ * --underlying-name "USD Coin" \
+ * --underlying-symbol "USDCnative" \
  * --decimals 8 \
  * --comptroller-key "Unitroller" \
- * --interest-rate-model-key "VolatileRateModel" \
- * --owner 0x81077d101293eCa45114AF55A63897cEc8732Fd3 \
- * --proxy true
+ * --interest-rate-model-key "StableRateModel" \
+ * --proxy false
  */
+
+const networkSettings = {
+    optimism: {
+        namePrefix: "Sonne ",
+        tickerPrefix: "so",
+        owner: "0x37fF10390F22fABDc2137E428A6E6965960D60b6",
+
+    },
+    base: {
+        namePrefix: "SonneBase ",
+        tickerPrefix: "sob",
+        owner: "0x81077d101293eCa45114AF55A63897cEc8732Fd3"
+    }
+}
 
 task("deploy-ctoken", "Deploys a new ctoken")
     .addParam("underlyingAddress", "Underlying asset's address")
@@ -28,7 +41,6 @@ task("deploy-ctoken", "Deploys a new ctoken")
     .addParam("decimals", "Decimals of the cToken", 8, types.int)
     .addParam("comptrollerKey", "Key of the comptroller")
     .addParam("interestRateModelKey", "Key of the interest rate model")
-    .addParam("owner", "Owner of the cToken")
     .addParam(
         "proxy",
         "Deploys contract using default proxy",
@@ -45,10 +57,10 @@ task("deploy-ctoken", "Deploys a new ctoken")
             decimals,
             comptrollerKey,
             interestRateModelKey,
-            owner,
             proxy,
         } = args;
         const {
+            network,
             ethers,
             getNamedAccounts,
             deployments: { deploy, get },
@@ -60,9 +72,11 @@ task("deploy-ctoken", "Deploys a new ctoken")
             ? "CErc20Upgradable_"
             : "CErc20Immutable_";
 
+        const settings = networkSettings[network.name];
+
         const contractKey = `${contractKeyPrefix}${underlyingSymbol}`;
-        const soName = `SonneBase ${underlyingName}`;
-        const soSymbol = `sob${underlyingSymbol}`;
+        const soName = `${settings.namePrefix}${underlyingName}`;
+        const soSymbol = `${settings.tickerPrefix}${underlyingSymbol}`;
 
         const comptrollerDeploy = await get(comptrollerKey);
         const interestRateModelDeploy = await get(interestRateModelKey);
@@ -83,7 +97,7 @@ task("deploy-ctoken", "Deploys a new ctoken")
                 soName,
                 soSymbol,
                 decimals,
-                owner,
+                settings.owner,
             ];
 
             if (proxy) {
@@ -92,7 +106,7 @@ task("deploy-ctoken", "Deploys a new ctoken")
                     log: true,
                     contract: "contracts/CErc20Upgradable.sol:CErc20Upgradable",
                     proxy: {
-                        owner: owner,
+                        owner: settings.owner,
                         proxyContract: "OpenZeppelinTransparentProxy",
                         execute: {
                             init: {
