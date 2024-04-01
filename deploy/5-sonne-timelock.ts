@@ -8,6 +8,7 @@ const func: DeployFunction = async ({
     ethers,
     network,
 }: HardhatRuntimeEnvironment) => {
+    return false;
     const [deployer] = await ethers.getSigners();
 
     const sonneTimelockDeploy = await deploy("SonneTimelockController", {
