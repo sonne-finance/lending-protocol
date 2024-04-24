@@ -1969,7 +1969,7 @@ contract Comptroller is
      * @return The address of SONNE
      */
     function getCompAddress() public view virtual returns (address) {
-        return 0x22a2488fE295047Ba13BD8cCCdBC8361DBD8cf7c;
+        return 0x1DB2466d9F5e10D7090E7152B68d62703a2245F0;
     }
 
     /**
@@ -1982,6 +1982,6 @@ contract Comptroller is
         virtual
         returns (address)
     {
-        return 0xd86C8d4279CCaFbec840c782BcC50D201f277419;
+        return 0x493f11252dD0eAc438C512c801F331Fda42C9402;
     }
 }
