@@ -3,15 +3,15 @@ import { task, types } from "hardhat/config";
 
 /**
  * npx hardhat deploy-ctoken \
- * --network optimism \
- * --underlying-address 0x0b2c639c533813f4aa9d7837caf62653d097ff85 \
- * --underlying-decimals 6 \
- * --underlying-name "USD Coin" \
- * --underlying-symbol "USDCnative" \
+ * --network base \
+ * --underlying-address 0x940181a94a35a4569e4529a3cdfb74e38fd98631 \
+ * --underlying-decimals 18 \
+ * --underlying-name "Aerodrome" \
+ * --underlying-symbol "AERO" \
  * --decimals 8 \
  * --comptroller-key "Unitroller" \
- * --interest-rate-model-key "StableRateModel" \
- * --proxy false
+ * --interest-rate-model-key "VolatileRateModel" \
+ * --proxy true
  */
 
 const networkSettings = {
@@ -19,14 +19,13 @@ const networkSettings = {
         namePrefix: "Sonne ",
         tickerPrefix: "so",
         owner: "0x37fF10390F22fABDc2137E428A6E6965960D60b6",
-
     },
     base: {
         namePrefix: "SonneBase ",
         tickerPrefix: "sob",
-        owner: "0x81077d101293eCa45114AF55A63897cEc8732Fd3"
-    }
-}
+        owner: "0x81077d101293eCa45114AF55A63897cEc8732Fd3",
+    },
+};
 
 task("deploy-ctoken", "Deploys a new ctoken")
     .addParam("underlyingAddress", "Underlying asset's address")

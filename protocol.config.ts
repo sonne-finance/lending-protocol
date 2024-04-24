@@ -130,6 +130,14 @@ const config: ProtocolConfig = {
                 reserveFactor: 0.18,
                 collateralFactor: 0.6,
             },
+            sobAERO: {
+                source: "chainlink",
+                priceFeed: "0x4EC5970fC728C5f65ba413992CD5fF6FD70fcfF0",
+                baseUnit: "1000000000000000000",
+                underlyingDecimals: 18,
+                reserveFactor: 0.3,
+                collateralFactor: 0.3,
+            },
         },
     },
 };

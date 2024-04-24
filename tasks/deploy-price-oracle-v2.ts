@@ -45,13 +45,11 @@ task(
 
     var tickers = Object.keys(priceConfig);
     var configs = Object.values(priceConfig);
-    console.log(tickers, configs);
 
     const oracle = await deploy("PriceOracleV2", {
         from: deployer,
         log: true,
-        contract:
-            "contracts/PriceOracle/PriceOracleV2.sol:PriceOracleV2",
+        contract: "contracts/PriceOracle/PriceOracleV2.sol:PriceOracleV2",
         args: [tickers, configs],
     });
 });
