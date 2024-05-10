@@ -3,7 +3,7 @@ import { task } from "hardhat/config";
 import protocolConfig from "../protocol.config";
 import { filterCTokenDeployments } from "./_utils";
 
-// npx hardhat deploy-price-oracle-v2 --network base
+// npx hardhat deploy-price-oracle-v2 --network optimism
 
 task(
     "deploy-price-oracle-v2",

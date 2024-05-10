@@ -3,15 +3,15 @@ import { task, types } from "hardhat/config";
 
 /**
  * npx hardhat deploy-ctoken \
- * --network base \
- * --underlying-address 0x940181a94a35a4569e4529a3cdfb74e38fd98631 \
+ * --network optimism \
+ * --underlying-address 0x9560e827aF36c94D2Ac33a39bCE1Fe78631088Db \
  * --underlying-decimals 18 \
- * --underlying-name "Aerodrome" \
- * --underlying-symbol "AERO" \
+ * --underlying-name "VelodromeV2" \
+ * --underlying-symbol "VELO" \
  * --decimals 8 \
  * --comptroller-key "Unitroller" \
  * --interest-rate-model-key "VolatileRateModel" \
- * --proxy true
+ * --proxy false
  */
 
 const networkSettings = {

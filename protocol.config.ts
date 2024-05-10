@@ -77,6 +77,12 @@ const config: ProtocolConfig = {
                 baseUnit: "1000000",
                 underlyingDecimals: 6,
             },
+            soVELO: {
+                source: "chainlink",
+                priceFeed: "0x0f2Ed59657e391746C1a097BDa98F2aBb94b1120",
+                baseUnit: "1000000000000000000",
+                underlyingDecimals: 18,
+            },
         },
     },
     base: {
